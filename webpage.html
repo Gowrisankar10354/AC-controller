@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP8266 AC Control</title>
+    <style>
+        body {
+            background-color: rgb(17 24 39);
+            color: rgb(192 132 252);
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .remote-body {
+            align-content: center;
+            background-color: rgb(31 41 55);
+            border-radius: 30px;
+            padding: 30px;
+            max-width: 500px;
+            min-width: 400px;
+            width: 100%;
+            margin: 30px auto;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            justify-content: center;
+            display: block;
+            box-sizing: border-box;
+        }
+            
+        
+        
+        .button-row {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            margin: 0 10px;
+        }
+        
+        .button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .power-button {
+            background-color: rgb(236 80 80);
+            color: white;
+            width: 100px;
+            height: 100px;
+        }
+        
+        .volume-up-button {
+            background-color: rgb(61 169 110);
+            color: white;
+        }
+        
+        .volume-down-button {
+            background-color: rgb(55 138 212);
+            color: white;
+        }
+        
+        .settings-button {
+            background-color: rgb(139 101 220);
+            color: white;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -40px;
+            margin-bottom: 10px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .disconnected {
+            background-color: #ff4444;
+            box-shadow: 0 0 10px #ff4444;
+        }
+        
+        .connected {
+            background-color: #44aa44;
+            box-shadow: 0 0 10px #44aa44;
+        }
+        
+        .footer {
+            text-align: center;
+            margin: 0px;
+            color: #888;
+            font-size: 14px;
+            bottom: 0px;
+            unicode-bidi: isolate;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ESP8266 Remote Control</h1>
+    </div>
+    <div class="status-indicator">
+        <div id="statusDot" class="status-dot disconnected"></div>
+        <span id="statusText">Disconnected</span>
+    </div>
+    
+    <div class="remote-body">
+        <!-- Power Button (Top) -->
+        <div class="button-row">
+            <div id="powerButton" class="button power-button">⏻</div>
+        </div>
+        
+        <!-- Volume Buttons (Middle) -->
+        <div class="button-row">
+            <div id="volumeDownButton" class="button volume-down-button">−</div>
+            <div id="volumeUpButton" class="button volume-up-button">+</div>
+        </div>
+        
+        <!-- Settings Button (Bottom) -->
+        <div class="button-row">
+            <div id="settingsButton" class="button settings-button">&#9881;</div>
+        </div>
+        
+        
+    </div>
+    
+    <div class="footer">
+        <p>Commands will be sent via WebSocket to your ESP8266</p>
+    </div>
+    
+    <script>
+        // WebSocket connection
+        let socket;
+        const espIp = "192.168.4.1"; // Change this to your ESP8266's IP
+        const espPort = 81; // Default WebSocket port for ESP8266
+        const wsUrl = `ws://${espIp}:${espPort}`;
+
+        // DOM Elements
+        const powerBtn = document.getElementById('powerButton');
+        const volUpBtn = document.getElementById('volumeUpButton');
+        const volDownBtn = document.getElementById('volumeDownButton');
+        const modeBtn = document.getElementById('settingsButton');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectionDot = document.getElementById('connectionDot');
+
+        // Connect to WebSocket
+        function connectWebSocket() {
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = function(e) {
+                console.log("Connected to ESP8266 WebSocket");
+                connectionStatus.textContent = "Connected";
+                connectionDot.classList.remove('disconnected');
+                connectionDot.classList.add('connected');
+            };
+
+            socket.onclose = function(e) {
+                console.log("Disconnected from ESP8266 WebSocket");
+                connectionStatus.textContent = "Disconnected";
+                connectionDot.classList.remove('connected');
+                connectionDot.classList.add('disconnected');
+                // Try to reconnect after 2 seconds
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            socket.onerror = function(e) {
+                console.error("WebSocket error:", e);
+                socket.close();
+            };
+
+            socket.onmessage = function(e) {
+                console.log("Message from ESP:", e.data);
+                // Handle any messages from ESP here if needed
+            };
+        }
+
+        // Button event listeners
+        powerBtn.addEventListener('click', () => {
+            sendCommand('POWER');
+            animateButton(powerBtn);
+        });
+
+        volUpBtn.addEventListener('click', () => {
+            sendCommand('UP');
+            animateButton(volUpBtn);
+        });
+
+        volDownBtn.addEventListener('click', () => {
+            sendCommand('DOWN');
+            animateButton(volDownBtn);
+        });
+
+        modeBtn.addEventListener('click', () => {
+            sendCommand('MODE');
+            animateButton(modeBtn);
+        });
+
+        // Send command to ESP8266
+        function sendCommand(cmd) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(cmd);
+                console.log("Sent command:", cmd);
+            } else {
+                console.error("WebSocket not connected");
+            }
+        }
+
+        // Button animation
+        function animateButton(btn) {
+            btn.classList.add('transform', 'scale-95');
+            setTimeout(() => {
+                btn.classList.remove('transform', 'scale-95');
+            }, 200);
+        }
+
+        // Initialize connection when page loads
+        window.addEventListener('load', connectWebSocket);
+    </script>
+</body>
+</html>
