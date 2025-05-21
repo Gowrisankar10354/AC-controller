@@ -15,6 +15,8 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 const uint16_t kIrLedPin = D2; // GPIO4 - Connect to IR LED driver circuit
 IRsend irsend(kIrLedPin);      // IRsend object
 
+//uint8_t == unsigned 8-bit integer.
+
 // POWER command:
 // Odd press
 uint8_t voltasStatePowerOdd[kVoltasStateLength]  = {0x33, 0x88, 0x88, 0x1D, 0x3B, 0x3B, 0x3B, 0x11, 0x20, 0xBD};
